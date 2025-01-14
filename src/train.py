@@ -61,7 +61,6 @@ class ProjectAgent:
 
     def train(self):
         device = torch.device('mps')
-        print('Using device:', device)
         self.model = self.myDQN(device)
         self.model.apply(self.init_weights)
         self.target_model = deepcopy(self.model).to(device)
@@ -70,10 +69,8 @@ class ProjectAgent:
         self.nb_actions = env.action_space.n
         self.epsilon_max = 1.
         self.epsilon_min = 0.01
-        # epsilon_stop = 20000
         epsilon_update = 100
         update_target_freq = 400
-        # epsilon_step = (epsilon_max-epsilon_min)/epsilon_stop
         self.decay_rate = 0.001
         epsilon = self.epsilon_max
         self.replaybuffer = ReplayBuffer(300000, device)
@@ -182,6 +179,4 @@ class ReplayBuffer:
     
     def __len__(self):
         return len(self.data)
-    
-# agent = ProjectAgent()
-# agent.train()
+        

@@ -29,7 +29,7 @@ class ProjectAgent:
 
     def load(self):
         device = torch.device('mps')
-        self.path = os.getcwd() + "/model.pt"
+        self.path = "./model.pt"
         self.model = self.myDQN(device)
         self.model.load_state_dict(torch.load(self.path, map_location=device))
         self.model.eval()

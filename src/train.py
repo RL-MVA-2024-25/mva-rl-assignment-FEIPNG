@@ -17,23 +17,23 @@ env = TimeLimit(
 # ENJOY!
 class ProjectAgent:
     def act(self, observation, use_random=False):
-        device = torch.device('mps')
+        device = torch.device('cpu')
         with torch.no_grad():
             Q = self.model(torch.Tensor(observation).unsqueeze(0).to(device))
             return torch.argmax(Q).item()
 
     def save(self, path):
         torch.save(self.model.state_dict(), path)
-        return 
+        return
 
 
     def load(self):
-        device = torch.device('mps')
+        device = torch.device('cpu')
         self.path = "./model.pt"
         self.model = self.myDQN(device)
         self.model.load_state_dict(torch.load(self.path, map_location=device))
         self.model.eval()
-        return 
+        return
     
     @staticmethod
     def init_weights(m):
@@ -43,15 +43,15 @@ class ProjectAgent:
 
     def myDQN(self, device):
         dim_state = env.observation_space.shape[0]
-        nb_action = env.action_space.n 
+        nb_action = env.action_space.n
         DQN = torch.nn.Sequential(
-            nn.Linear(dim_state, 512),
+            nn.Linear(dim_state, 256),
             nn.ReLU(),
-            nn.Linear(512, 512),
+            nn.Linear(256, 256),
             nn.ReLU(),
-            nn.Linear(512, 512),
+            nn.Linear(256, 256),
             nn.ReLU(),
-            nn.Linear(512, 256),
+            nn.Linear(256, 256),
             nn.ReLU(),
             nn.Linear(256, 256),
             nn.ReLU(),
@@ -60,7 +60,7 @@ class ProjectAgent:
         return DQN
 
     def train(self):
-        device = torch.device('mps')
+        device = torch.device('cpu')
         self.model = self.myDQN(device)
         self.model.apply(self.init_weights)
         self.target_model = deepcopy(self.model).to(device)
@@ -73,7 +73,7 @@ class ProjectAgent:
         update_target_freq = 400
         self.decay_rate = 0.001
         epsilon = self.epsilon_max
-        self.replaybuffer = ReplayBuffer(300000, device)
+        self.replaybuffer = ReplayBuffer(100000, device)
         self.criterion = torch.nn.SmoothL1Loss()
         lr = 0.001
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
@@ -81,11 +81,11 @@ class ProjectAgent:
         episode_return = []
         episode = 0
         step = 0
-        previous_score = 0    
+        previous_score = 0
         previous_pop_score = 0
         previous_best_pop_score = 0
         state, _ = env.reset()
-        while episode <  200:
+        while episode <  400:
             # update epsilon
             if step > epsilon_update:
                 epsilon = self.epsilon_min + (self.epsilon_max - self.epsilon_min) * (np.exp(-self.decay_rate * step))
@@ -108,11 +108,11 @@ class ProjectAgent:
                     loss = self.criterion(Q_state_action, update.unsqueeze(1))
                     self.optimizer.zero_grad()
                     loss.backward()
-                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=10)  
+                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=10)
                     self.optimizer.step()
 
             # update target model
-            if step % update_target_freq == 0: 
+            if step % update_target_freq == 0:
                 self.target_model.load_state_dict(self.model.state_dict())
 
             # evaluate and choose best model
@@ -154,7 +154,7 @@ class ProjectAgent:
 
 class ReplayBuffer:
     def __init__(self, max_size, device):
-        self.max_size = max_size 
+        self.max_size = max_size
         self.index = 0
         self.data = []
         self.device = device
@@ -167,7 +167,7 @@ class ReplayBuffer:
 
     def sample(self, nb):
         # generate samples
-        batch = random.sample(self.data, nb)        
+        batch = random.sample(self.data, nb)
         states, actions, rewards, next_states, dones = zip(*batch)
         # to tensor
         states = torch.Tensor(np.array(states)).to(self.device)

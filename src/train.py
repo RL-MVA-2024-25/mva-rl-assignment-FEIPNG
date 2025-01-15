@@ -45,17 +45,17 @@ class ProjectAgent:
         dim_state = env.observation_space.shape[0]
         nb_action = env.action_space.n
         DQN = torch.nn.Sequential(
-            nn.Linear(dim_state, 256),
+            nn.Linear(dim_state, 512),
             nn.ReLU(),
-            nn.Linear(256, 256),
+            nn.Linear(512, 512),
             nn.ReLU(),
-            nn.Linear(256, 256),
+            nn.Linear(512, 512),
             nn.ReLU(),
-            nn.Linear(256, 256),
+            nn.Linear(512, 512),
             nn.ReLU(),
-            nn.Linear(256, 256),
+            nn.Linear(512, 512),
             nn.ReLU(),
-            nn.Linear(256, nb_action)
+            nn.Linear(512, nb_action)
         ).to(device)
         return DQN
 
@@ -64,31 +64,31 @@ class ProjectAgent:
         self.model = self.myDQN(device)
         self.model.apply(self.init_weights)
         self.target_model = deepcopy(self.model).to(device)
-        self.gamma = 0.98
-        self.batch_size = 800
+        self.gamma = 0.9
+        self.batch_size = 500
         self.nb_actions = env.action_space.n
-        self.epsilon_max = 1.
-        self.epsilon_min = 0.01
+        self.epsilon_max = 0.9
+        self.epsilon_min = 0.05
         epsilon_update = 100
         update_target_freq = 400
-        self.decay_rate = 0.001
+        self.decay = 1000
         epsilon = self.epsilon_max
         self.replaybuffer = ReplayBuffer(100000, device)
         self.criterion = torch.nn.SmoothL1Loss()
-        lr = 0.001
+        lr = 0.0001
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
-        nb_gradient_steps = 3
+        nb_gradient_steps = 5
         episode_return = []
         episode = 0
         step = 0
+        tau = 0.005
         previous_score = 0
         previous_pop_score = 0
         previous_best_pop_score = 0
         state, _ = env.reset()
-        while episode <  400:
+        while episode < 400:
             # update epsilon
-            if step > epsilon_update:
-                epsilon = self.epsilon_min + (self.epsilon_max - self.epsilon_min) * (np.exp(-self.decay_rate * step))
+            epsilon = self.epsilon_min + (self.epsilon_max - self.epsilon_min) * (np.exp(-1 * step / self.decay))
             
             # choose an action
             action = env.action_space.sample() if np.random.rand() < epsilon else self.act(state)
@@ -114,6 +114,12 @@ class ProjectAgent:
             # update target model
             if step % update_target_freq == 0:
                 self.target_model.load_state_dict(self.model.state_dict())
+
+            target_net_state_dict = self.target_model.state_dict()
+            policy_net_state_dict = self.model.state_dict()
+            for key in policy_net_state_dict:
+                target_net_state_dict[key] = policy_net_state_dict[key]*tau + target_net_state_dict[key]*(1-tau)
+            self.target_model.load_state_dict(target_net_state_dict)
 
             # evaluate and choose best model
             if done_step or trunc_step:
@@ -179,4 +185,3 @@ class ReplayBuffer:
     
     def __len__(self):
         return len(self.data)
-        
